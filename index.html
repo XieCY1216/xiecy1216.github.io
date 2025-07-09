@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>课文默写系统</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部标题 -->
+        <header class="app-header">
+            <h1><i class="fas fa-book"></i> 课文默写系统</h1>
+            <div class="header-controls">
+                <button id="add-text-btn" class="btn primary">
+                    <i class="fas fa-plus"></i> 添加新课文
+                </button>
+                <button id="toggle-view" class="btn secondary">
+                    <i class="fas fa-list"></i> 列表视图
+                </button>
+            </div>
+        </header>
+
+        <!-- 主内容区域 -->
+        <main class="content">
+            <!-- 课文列表视图 -->
+            <div id="text-list-view" class="view active">
+                <div class="search-bar">
+                    <input type="text" id="search-input" placeholder="搜索课文标题...">
+                    <i class="fas fa-search"></i>
+                </div>
+                <div id="texts-container" class="texts-container">
+                    <!-- 课文列表将通过JS动态生成 -->
+                </div>
+            </div>
+
+            <!-- 添加/编辑课文视图 -->
+            <div id="edit-text-view" class="view">
+                <div class="view-header">
+                    <button id="back-to-list" class="btn secondary">
+                        <i class="fas fa-arrow-left"></i> 返回列表
+                    </button>
+                    <h2 id="edit-title">添加新课文</h2>
+                </div>
+                <form id="text-form">
+                    <input type="hidden" id="text-id">
+                    <div class="form-group">
+                        <label for="title">课文标题</label>
+                        <input type="text" id="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="content">课文内容</label>
+                        <textarea id="content" rows="10" required></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn primary">保存课文</button>
+                        <button type="button" id="cancel-edit" class="btn secondary">取消</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 默写视图 -->
+            <div id="recite-view" class="view">
+                <div class="view-header">
+                    <button id="back-from-recite" class="btn secondary">
+                        <i class="fas fa-arrow-left"></i> 返回列表
+                    </button>
+                    <h2 id="recite-title">默写课文</h2>
+                </div>
+                
+                <div class="recite-container">
+                    <div class="recite-controls">
+                        <button id="show-original-btn" class="btn">
+                            <i class="fas fa-eye"></i> 显示原文
+                        </button>
+                        <div class="timer">
+                            <i class="fas fa-clock"></i> 
+                            <span id="timer">00:00</span>
+                        </div>
+                    </div>
+                    
+                    <div id="original-container" class="original-text" style="display: none;">
+                        <h3>原文:</h3>
+                        <div id="original-content" class="text-content"></div>
+                    </div>
+                    
+                    <div class="recite-form">
+                        <div class="form-group">
+                            <label for="recited">默写内容:</label>
+                            <textarea id="recited" placeholder="请在此处默写课文..." rows="12"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button id="submit-recite" class="btn primary">提交默写</button>
+                            <button id="reset-recite" class="btn secondary">重新开始</button>
+                        </div>
+                    </div>
+                    
+                    <div id="result-container" class="result-container" style="display: none;">
+                        <h3>对比结果:</h3>
+                        <div class="comparison">
+                            <div class="result-panel">
+                                <h4>原文:</h4>
+                                <div id="original-result" class="text-content marked"></div>
+                                <p class="legend"><span class="missing-sample"></span> 缺少或错误的内容</p>
+                            </div>
+                            <div class="result-panel">
+                                <h4>默写结果:</h4>
+                                <div id="recited-result" class="text-content marked"></div>
+                                <p class="legend"><span class="extra-sample"></span> 多余或错误的内容</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 底部信息 -->
+        <footer>
+            <p>课文默写系统 &copy; 2023 | 所有数据保存在您的浏览器中</p>
+        </footer>
+    </div>
+
+    <!-- 确认删除模态框 -->
+    <div id="delete-modal" class="modal">
+        <div class="modal-content">
+            <h3>确认删除</h3>
+            <p>确定要删除这篇课文吗？此操作无法撤销。</p>
+            <div class="modal-actions">
+                <button id="confirm-delete" class="btn danger">删除</button>
+                <button id="cancel-delete" class="btn secondary">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -8,6 +8,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- 引入Chart.js注释插件 -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 
   <!-- Tailwind 配置 -->
   <script>
@@ -44,6 +46,9 @@
       }
       .btn-primary {
         @apply bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg;
+      }
+      .btn-secondary {
+        @apply bg-secondary hover:bg-secondary/90 text-white font-medium py-2 px-4 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg;
       }
       .btn-danger {
         @apply bg-danger hover:bg-danger/90 text-white font-medium py-2 px-4 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg;
@@ -92,14 +97,17 @@
           <p class="text-lg md:text-xl font-medium text-gray-700">点击下方按钮开始博饼</p>
         </div>
 
-        <!-- 控制按钮区（仅保留手动博饼和重置） -->
+        <!-- 控制按钮区 -->
         <div class="flex flex-wrap justify-center gap-4">
           <button id="roll-btn" class="btn-primary flex items-center">
-            <i class="fa fa-play mr-2"></i>博饼
+            <i class="fa fa-play mr-2"></i>手动博饼
           </button>
+
           <button id="reset-btn" class="btn-danger flex items-center">
             <i class="fa fa-trash mr-2"></i>重置数据
           </button>
+
+          
         </div>
 
         <!-- 统计概览 -->
@@ -182,7 +190,7 @@
       { id: 'no_prize', name: '无奖', theoretical: 14200 / 46656 }
     ];
 
-    // 初始化统计数据（移除自动博饼相关变量）
+    // 初始化统计数据
     let stats = {};
     let totalRolls = 0;
     let lastRollTime = 0;
@@ -285,7 +293,7 @@
     }
 
     // 更新骰子显示
-    function updateDiceDisplay(dice, animate = true) {
+    function updateDiceDisplay(dice, animate = false) {
       dice.forEach((value, index) => {
         const diceElement = document.getElementById(`dice-${index + 1}`);
         diceElement.textContent = value;
@@ -300,7 +308,7 @@
           diceElement.classList.add('bg-white', 'text-dark');
         }
 
-        // 添加旋转动画
+        // 添加旋转动画（如果需要）
         if (animate) {
           diceElement.classList.add('dice-rotate');
         }
@@ -363,3 +371,186 @@
           console.warn('Chart.js尚未加载，将在稍后重试初始化图表');
           setTimeout(initProbabilityChart, 500);
           return;
+        }
+
+        const ctx = document.getElementById('probability-chart').getContext('2d');
+        const labels = resultTypes.map(type => type.name);
+        const errors = resultTypes.map(type => 
+          Math.abs(((totalRolls > 0 ? (stats[type.id].count / totalRolls) : 0) - type.theoretical) / type.theoretical) * 100
+        );
+        
+        if (probabilityChart) {
+          probabilityChart.destroy();
+        }
+
+        probabilityChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: '相对误差 (%)',
+              data: errors,
+              backgroundColor: 'rgba(16, 185, 129, 0.7)',
+              borderColor: 'rgba(16, 185, 129, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                ticks: {
+                  font: { size: 10 },
+                  maxRotation: 45,
+                  minRotation: 45
+                }
+              },
+              y: {
+                beginAtZero: true,
+                title: { display: true, text: '相对误差 (%)' }
+              }
+            },
+            plugins: {
+              legend: { position: 'top' },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return `${context.dataset.label}: ${context.raw.toFixed(4)}%`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      } catch (error) {
+        console.error('初始化概率图表时出错:', error);
+      }
+    }
+
+    function updateProbabilityChart() {
+      if (typeof Chart === 'undefined' || !probabilityChart) {
+        initProbabilityChart();
+        return;
+      }
+
+      const currentData = resultTypes.map(type => 
+        Math.abs(((totalRolls > 0 ? (stats[type.id].count / totalRolls) : 0) - type.theoretical) / type.theoretical) * 100
+      );
+      
+      probabilityChart.data.datasets[0].data = currentData;
+      probabilityChart.update();
+    }
+
+    // 更新整个UI
+    function updateUI() {
+      document.getElementById('total-rolls').textContent = totalRolls;
+      
+      updateStatsTable();
+      updateProbabilityChart();
+    }
+
+    // 执行一次博饼
+    function performRoll() {
+      const now = Date.now();
+      const timeSinceLastRoll = (now - lastRollTime) / 1000;
+      const animate = true;
+
+      // 生成骰子结果
+      const dice = rollDice();
+
+      // 更新骰子显示
+      updateDiceDisplay(dice, animate);
+
+      // 判定结果
+      const resultId = determineResult(dice);
+
+      // 更新统计
+      totalRolls++;
+      stats[resultId].count++;
+
+      // 更新结果显示
+      updateResultDisplay(resultId);
+      console.log(`第${totalRolls}次结果：${resultTypes.find(entry => entry.id === resultId).name}`);
+
+      // 更新UI
+      updateUI();
+
+      // 记录此次博饼时间
+      lastRollTime = now;
+
+      return resultId;
+    }
+
+
+
+    // 初始化事件监听
+    function initEventListeners() {
+      try {
+        // 手动博饼按钮
+        const rollBtn = document.getElementById('roll-btn');
+        if (rollBtn) {
+          rollBtn.addEventListener('click', performRoll);
+        } else {
+          console.error('未找到roll-btn元素');
+        }
+
+
+
+        // 重置按钮
+        const resetBtn = document.getElementById('reset-btn');
+        if (resetBtn) {
+          resetBtn.addEventListener('click', () => {
+            initStats();
+          });
+        } else {
+          console.error('未找到reset-btn元素');
+        }
+
+        
+
+      } catch (error) {
+        console.error('初始化事件监听器时出错:', error);
+      }
+    }
+
+    // 初始化应用
+    function initApp() {
+      try {
+        initStats();
+        initEventListeners();
+
+        // 确保Chart.js加载完成后再初始化图表
+        if (typeof Chart === 'undefined') {
+          console.log('等待Chart.js加载...');
+          // 定期检查Chart对象是否可用
+          const checkChartLoaded = setInterval(() => {
+            if (typeof Chart !== 'undefined') {
+              clearInterval(checkChartLoaded);
+              initProbabilityChart();
+            }
+          }, 100);
+
+          // 设置超时，防止无限等待
+          setTimeout(() => {
+            clearInterval(checkChartLoaded);
+            if (typeof Chart === 'undefined') {
+              console.error('Chart.js加载超时，请检查网络连接或CDN链接');
+              // 显示友好的错误消息给用户
+              document.querySelector('#probability-chart').parentNode.innerHTML = 
+                '<div class="text-center text-danger py-10">图表加载失败，请刷新页面重试</div>';
+            }
+          }, 10000);
+        } else {
+          initProbabilityChart();
+        }
+      } catch (error) {
+        console.error('初始化应用时出错:', error);
+      }
+    }
+
+    // 页面加载完成后初始化
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
